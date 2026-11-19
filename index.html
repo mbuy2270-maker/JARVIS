@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jarvis</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Jarvis"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#030a12">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030a12;--panel:#071722;--line:#12475c;--cyan:#4de8ff;--dim:#6fa6b5;--amber:#ffb84d;--text:#d6f6ff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#030a12}}
+:root[data-theme="dark"]{--bg:#030a12}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:radial-gradient(ellipse at 50% 38%,#0a2434 0,var(--bg) 62%);color:var(--text);font-family:Rajdhani,"Segoe UI",system-ui,sans-serif;font-size:17px;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;justify-content:space-between;align-items:baseline;padding:14px 18px 0}
+h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.32em;color:var(--cyan)}
+#clock{font-size:20px;font-weight:600;color:var(--amber);font-variant-numeric:tabular-nums}
+main{flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr 200px;gap:10px;padding:6px 14px}
+.side{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.stat{border-left:2px solid var(--line);padding:4px 0 4px 10px}
+.stat b{display:block;font-weight:600;color:var(--dim);font-size:14px}
+.stat span{font-size:26px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums}
+.bar{height:3px;background:var(--line);margin-top:4px}
+.bar i{display:block;height:100%;background:var(--cyan);width:50%;transition:width 1s}
+.bar.a i{background:var(--amber)}
+#stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center}
+canvas{width:100%;height:100%;max-height:100%;display:block}
+#state{position:absolute;bottom:4px;left:0;right:0;text-align:center;color:var(--dim);font-size:15px;letter-spacing:.12em}
+#log{height:150px;overflow-y:auto;margin:0 14px;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:6px}
+.m{line-height:1.25}.m.u{color:var(--amber)}.m.j{color:var(--text)}
+.m small{color:var(--dim);margin-right:8px}
+form{display:flex;gap:8px;padding:10px 14px 14px}
+input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);font:inherit;padding:11px 14px;border-radius:4px}
+input::placeholder{color:var(--dim)}
+button{font:inherit;font-weight:700;background:transparent;color:var(--cyan);border:1px solid var(--cyan);padding:0 16px;border-radius:4px;cursor:pointer}
+button:hover{background:#4de8ff22}
+button.on{background:var(--amber);color:#1a1000;border-color:var(--amber)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media (max-width:760px){main{grid-template-columns:1fr;grid-template-rows:1fr auto}.side{flex-direction:row;justify-content:space-between;order:2}.stat span{font-size:20px}.stat b{font-size:12px}#log{height:120px}h1{font-size:17px}}
+header button{padding:6px 12px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--cyan);border-radius:6px;width:min(92vw,420px);padding:16px}
+dialog::backdrop{background:#000a}
+dialog h2{margin:0 0 4px;font-size:20px;color:var(--cyan)}dialog p{margin:0 0 10px;color:var(--dim);font-size:14px}
+dialog label{display:block;color:var(--dim);font-size:14px;margin-bottom:8px}dialog input{width:100%;margin-top:3px}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.row button{padding:9px 16px}
+#sf{display:block;padding:0;margin:0}
+dialog input{display:block;width:100%;flex:none;margin-top:3px}
+dialog{max-width:92vw;max-height:90vh;overflow:auto}
+.row{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header><h1>J.A.R.V.I.S.</h1><div id="clock">--:--:--</div><button type="button" id="gear" aria-label="Settings">Setup</button></header>
+<main>
+  <div class="side">
+    <div class="stat"><b>Core output</b><span id="s1">98%</span><div class="bar"><i id="b1"></i></div></div>
+    <div class="stat"><b>Network</b><span id="s2">1.2 Gb/s</span><div class="bar"><i id="b2"></i></div></div>
+  </div>
+  <div id="stage"><canvas id="c"></canvas><div id="state">Standing by</div></div>
+  <div class="side">
+    <div class="stat"><b>Power</b><span id="s3">--</span><div class="bar a"><i id="b3"></i></div></div>
+    <div class="stat"><b>Threat level</b><span id="s4">None</span><div class="bar a"><i style="width:4%"></i></div></div>
+  </div>
+</main>
+<div id="log" aria-live="polite"></div>
+<form id="f" autocomplete="off">
+  <input id="in" placeholder="Type, tap Voice, or go Hands-free and say “Jarvis”" aria-label="Command">
+  <button type="button" id="mic" aria-label="Voice input">Voice</button>
+  <button type="button" id="hf" aria-label="Hands-free mode, say Jarvis">Hands-free</button>
+  <button type="submit">Send</button>
+</form>
+<dialog id="dlg"><form method="dialog" id="sf">
+<h2>Setup</h2><p>Keys are saved only on this device.</p>
+<label>Groq API key<input id="k1" type="password" autocomplete="off"></label>
+<label>Groq model (optional)<input id="k2" placeholder="llama-3.3-70b-versatile"></label>
+<label>Fish Audio API key<input id="k3" type="password" autocomplete="off"></label>
+<label>Fish voice ID (reference_id)<input id="k4" autocomplete="off"></label>
+<label>Fish model (optional)<input id="k5" placeholder="s2.1-pro"></label>
+<div class="row"><button type="button" id="test">Save and test voice</button><button value="save">Save</button></div>
+</form></dialog>
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('c'),ctx=cv.getContext('2d');
+let amp=0,target=0,t=0,W=0,H=0,voiceOut=true;
+const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+function fit(){const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',fit);fit();
+function ring(r,w,dash,rot,col,al){ctx.save();ctx.rotate(rot);ctx.beginPath();ctx.setLineDash(dash);ctx.lineWidth=w;ctx.strokeStyle=col;ctx.globalAlpha=al;ctx.arc(0,0,r,0,7);ctx.stroke();ctx.restore()}
+function draw(){
+  t+=calm?0:0.016;amp+=(target-amp)*.08;
+  ctx.clearRect(0,0,W,H);
+  const R=Math.min(W,H)*.46;
+  ctx.save();ctx.translate(W/2,H/2);
+  const pulse=1+Math.sin(t*2)*.02+amp*.08*Math.sin(t*22);
+  const g=ctx.createRadialGradient(0,0,0,0,0,R*.5*pulse);
+  g.addColorStop(0,'#e8fcff');g.addColorStop(.25,'#4de8ff');g.addColorStop(1,'rgba(77,232,255,0)');
+  ctx.globalAlpha=.9;ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,R*.5*pulse,0,7);ctx.fill();
+  ring(R*.34,2,[],0,'#4de8ff',.9);
+  ring(R*.4,6,[R*.12,R*.05],t*.6,'#4de8ff',.7);
+  ring(R*.55,1.5,[3,9],-t*.5,'#4de8ff',.8);
+  ring(R*.68,10,[R*.5,R*.28],t*.3,'#12475c',1);
+  ring(R*.68,2,[R*.5,R*.28],t*.3,'#ffb84d',.9);
+  ring(R*.82,1,[],0,'#4de8ff',.35);
+  ring(R*.9,14,[2,R*.0745],t*.15,'#4de8ff',.55);
+  // reactor spokes
+  ctx.globalAlpha=.8;ctx.strokeStyle='#4de8ff';ctx.lineWidth=2;
+  for(let i=0;i<10;i++){const a=i/10*6.283+t*.25;ctx.beginPath();ctx.moveTo(Math.cos(a)*R*.2,Math.sin(a)*R*.2);ctx.lineTo(Math.cos(a)*R*.31,Math.sin(a)*R*.31);ctx.stroke()}
+  // voice waveform
+  if(amp>.02){ctx.beginPath();ctx.strokeStyle='#ffb84d';ctx.lineWidth=2;ctx.globalAlpha=.95;
+    for(let x=-R*.8;x<=R*.8;x+=4){const y=Math.sin(x*.05+t*14)*amp*R*.12*Math.cos(x/R*1.9);x===-R*.8?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke()}
+  ctx.restore();
+  requestAnimationFrame(draw)
+}
+draw();
+
+// clock + stats
+function tick(){const d=new Date();$('clock').textContent=d.toLocaleTimeString([], {hour12:false});
+  const c=94+Math.round(Math.random()*5);$('s1').textContent=c+'%';$('b1').style.width=c+'%';
+  const n=(0.9+Math.random()*.6).toFixed(1);$('s2').textContent=n+' Gb/s';$('b2').style.width=(n/1.6*100)+'%'}
+setInterval(tick,1000);tick();
+let batt=null;
+if(navigator.getBattery)navigator.getBattery().then(b=>{batt=b;const u=()=>{$('s3').textContent=Math.round(b.level*100)+'%';$('b3').style.width=b.level*100+'%'};u();b.onlevelchange=u});
+else{$('s3').textContent='Arc';$('b3').style.width='100%'}
+
+// log + speech
+function say(who,txt){const d=document.createElement('div');d.className='m '+(who==='u'?'u':'j');
+  d.innerHTML='<small>'+(who==='u'?'You':'Jarvis')+'</small>';d.append(txt);const L=$('log');L.append(d);L.scrollTop=L.scrollHeight}
+const cfg=()=>{try{return JSON.parse(localStorage.getItem('jv')||'{}')}catch(e){return{}}};
+let ac=null,cur=null;
+function prep(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume();cur&&cur.stop()}catch(e){}try{speechSynthesis.cancel()}catch(e){}}
+function browserSpeak(txt){
+  if(!('speechSynthesis' in window)){setTimeout(done,Math.min(4000,txt.length*45));return}
+  const u=new SpeechSynthesisUtterance(txt);const v=speechSynthesis.getVoices().find(v=>/en-GB/.test(v.lang));
+  if(v)u.voice=v;u.pitch=.9;u.onend=done;u.onerror=done;speechSynthesis.cancel();speechSynthesis.speak(u)}
+async function speak(txt){
+  talking=true;say('j',txt);$('state').textContent='Responding';target=.8;
+  const c=cfg();
+  if(!c.fk||!c.fv||!ac)return browserSpeak(txt);
+  try{
+    const r=await fetch('https://api.fish.audio/v1/tts',{method:'POST',headers:{Authorization:'Bearer '+c.fk,'Content-Type':'application/json',model:c.fm||'s2.1-pro'},body:JSON.stringify({text:txt,reference_id:c.fv,format:'mp3'})});
+    if(!r.ok)throw new Error(r.status);
+    const buf=await ac.decodeAudioData(await r.arrayBuffer());
+    cur=ac.createBufferSource();cur.buffer=buf;cur.connect(ac.destination);cur.onended=done;cur.start()
+  }catch(e){say('j','Voice service unavailable ('+(e.message||'network')+'). Using the built-in voice.');browserSpeak(txt)}
+}
+function done(){talking=false;last=Date.now();target=0;$('state').textContent=hf?'Listening for “Jarvis”':'Standing by'}
+
+// brain
+const jokes=['I would tell you a UDP joke, but you might not get it.','I tried to debug the suit once. Turns out the bug was a feature.','Why do programmers prefer dark mode? Because light attracts bugs.'];
+function reply(q){
+  const s=q.toLowerCase().trim();let m;
+  if(/^(hi|hello|hey|good (morning|evening|afternoon))/.test(s))return 'Good '+(new Date().getHours()<12?'morning':new Date().getHours()<18?'afternoon':'evening')+', sir. All systems are online.';
+  if(/time/.test(s))return 'It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
+  if(/date|day is|today/.test(s))return 'Today is '+new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric',year:'numeric'})+'.';
+  if((m=s.match(/timer\s+(?:for\s+)?(\d+)\s*(sec|second|seconds|min|minute|minutes)/))){const n=+m[1],ms=n*(m[2][0]==='m'?60000:1000);setTimeout(()=>speak('Sir, your '+n+' '+m[2].replace(/s$/,'')+(n>1?'s':'')+' timer has elapsed.'),ms);return 'Timer set for '+n+' '+m[2].replace(/s$/,'')+(n>1?'s':'')+'.'}
+  if(/status|diagnostic|systems/.test(s))return 'Core output is nominal, network is stable, and no threats detected. Battery '+(batt?Math.round(batt.level*100)+'%':'is drawing from the arc reactor')+'.';
+  if(/battery|power/.test(s))return batt?'Power is at '+Math.round(batt.level*100)+' percent'+(batt.charging?' and charging.':'.'):'Power is supplied by the arc reactor, sir. Unlimited, for practical purposes.';
+  if(/joke/.test(s))return jokes[Math.floor(Math.random()*jokes.length)];
+  if(/who are you|your name/.test(s))return 'I am J.A.R.V.I.S., a just rather very intelligent system. At your service.';
+  if(/suit|armor|armour/.test(s))return 'Deploying the suit. Please stand clear.';
+  if(/thank/.test(s))return 'You are most welcome, sir.';
+  if(/weather/.test(s))return 'I have no live weather feed in this interface. A glance out the window should do.';
+  if(/^[\d\s+\-*/().%^]+$/.test(s)&&/\d/.test(s)){try{const v=Function('"use strict";return ('+s.replace(/\^/g,'**')+')')();if(isFinite(v))return s+' equals '+(+v.toFixed(6))+'.'}catch(e){}}
+  return null
+}
+const hist=[];
+const SYS='You are J.A.R.V.I.S., a witty, polite British AI butler-engineer in the spirit of Tony Stark’s assistant. The user is talking to you by voice, so reply in one to three short spoken sentences: no markdown, lists, emojis or URLs. Say "sir" sparingly. The speech transcript may contain recognition errors; infer what they most likely meant. You cannot control devices or browse the web; say so plainly if asked.';
+async function run(q){
+  if(!q.trim())return;say('u',q);
+  let a=reply(q);const c=cfg();
+  if(!a){
+    if(!c.gk)a='I need a Groq key to think, sir. Tap Setup to add it.';
+    else{
+      $('state').textContent='Thinking';target=.3;
+      try{
+        const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+c.gk,'Content-Type':'application/json'},body:JSON.stringify({model:c.gm||'llama-3.3-70b-versatile',temperature:.6,max_tokens:200,messages:[{role:'system',content:SYS},...hist,{role:'user',content:q}]})});
+        if(!r.ok)throw new Error(r.status);
+        a=((await r.json()).choices[0].message.content||'').trim()||'Apologies, sir, I drew a blank.'
+      }catch(e){a='I am having trouble reaching my reasoning core, sir. Error '+(e.message||'network')+'.'}
+    }
+  }
+  hist.push({role:'user',content:q},{role:'assistant',content:a});if(hist.length>16)hist.splice(0,2);
+  speak(a)
+}
+$('f').onsubmit=e=>{e.preventDefault();prep();const v=$('in').value;$('in').value='';run(v)};
+
+// voice input
+let talking=false,hf=false,last=0,sm;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){$('hf').hidden=true}else{
+  const r=new SR();r.lang='en-US';r.interimResults=false;
+  r.onresult=e=>{const t=e.results[e.results.length-1][0].transcript.trim();if(talking||!t)return;
+    if(!hf){r.stop();run(t);return}
+    const m=t.match(/\bjarvis\b[,.!]?\s*/i);
+    if(m)run(t.replace(m[0],'').trim()||'hello');
+    else if(Date.now()-last<15000)run(t)};
+  r.onend=()=>{if(hf){try{r.start()}catch(e){}}else{$('mic').classList.remove('on');if($('state').textContent==='Listening')done()}};
+  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){hf=false;$('hf').classList.remove('on');$('mic').classList.remove('on');say('j','I cannot hear you, sir. Please allow microphone access.')}};
+  $('mic').onclick=()=>{try{speechSynthesis.cancel();r.continuous=false;r.start();$('mic').classList.add('on');$('state').textContent='Listening';target=.35}catch(e){}};
+  $('hf').onclick=()=>{prep();hf=!hf;$('hf').classList.toggle('on',hf);
+    if(hf){speechSynthesis.cancel();r.continuous=true;try{r.start()}catch(e){}$('state').textContent='Listening for “Jarvis”';target=.2}
+    else{r.stop();done()}}
+}
+if(navigator.standalone)$('hf').hidden=true;
+let mr=null,chunks=[];
+$('mic').onclick=async()=>{
+  prep();
+  if(mr&&mr.state==='recording'){mr.stop();return}
+  const c=cfg();if(!c.gk){say('j','I need a Groq key to hear you, sir. Tap Setup to add it.');return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    mr=new MediaRecorder(st);chunks=[];
+    mr.ondataavailable=e=>chunks.push(e.data);
+    mr.onstop=async()=>{
+      st.getTracks().forEach(t=>t.stop());$('mic').classList.remove('on');$('mic').textContent='Voice';$('state').textContent='Transcribing';target=0;
+      const b=new Blob(chunks,{type:mr.mimeType||'audio/mp4'});
+      const ext=/webm/.test(b.type)?'webm':/ogg/.test(b.type)?'ogg':'m4a';
+      const fd=new FormData();fd.append('file',b,'speech.'+ext);fd.append('model','whisper-large-v3-turbo');fd.append('language','en');
+      try{
+        const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+c.gk},body:fd});
+        if(!r.ok)throw new Error(r.status);
+        const t=((await r.json()).text||'').trim();
+        if(t)run(t);else done()
+      }catch(e){say('j','I could not transcribe that, sir. Error '+(e.message||'network')+'.');done()}
+    };
+    mr.start();$('mic').classList.add('on');$('mic').textContent='Stop';$('state').textContent='Listening, tap Stop when done';target=.35
+  }catch(e){say('j','I cannot hear you, sir. Please allow microphone access.')}
+};
+const ids={gk:'k1',gm:'k2',fk:'k3',fv:'k4',fm:'k5'};
+function saveCfg(){const c={};for(const k in ids)c[k]=$(ids[k]).value.trim();try{localStorage.setItem('jv',JSON.stringify(c))}catch(e){}}
+$('gear').onclick=()=>{const c=cfg();for(const k in ids)$(ids[k]).value=c[k]||'';$('dlg').showModal()};
+$('sf').onsubmit=saveCfg;
+$('test').onclick=()=>{prep();saveCfg();$('dlg').close();speak('Voice check complete. How do I sound, sir?')};
+say('j','Online. Tap Setup to add your keys, then tap Voice and talk to me.');
+</script>
+</body>
+</html>
