@@ -79,6 +79,7 @@ dialog{max-width:92vw;max-height:90vh;overflow:auto}
 <label>Fish Audio API key<input id="k3" type="password" autocomplete="off"></label>
 <label>Fish voice ID (reference_id)<input id="k4" autocomplete="off"></label>
 <label>Fish model (optional)<input id="k5" placeholder="s2.1-pro"></label>
+<label>Voice server link (optional)<input id="k6" autocomplete="off" placeholder="https://…workers.dev"></label>
 <div class="row"><button type="button" id="test">Save and test voice</button><button value="save">Save</button></div>
 </form></dialog>
 <script>
@@ -140,7 +141,7 @@ async function speak(txt){
   const c=cfg();
   if(!c.fk||!c.fv||!ac)return browserSpeak(txt);
   try{
-    const r=await fetch('https://api.fish.audio/v1/tts',{method:'POST',headers:{Authorization:'Bearer '+c.fk,'Content-Type':'application/json',model:c.fm||'s2.1-pro'},body:JSON.stringify({text:txt,reference_id:c.fv,format:'mp3'})});
+    const r=c.fu?await fetch(c.fu,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt,reference_id:c.fv,model:c.fm||'s2.1-pro',key:c.fk})}):await fetch('https://api.fish.audio/v1/tts',{method:'POST',headers:{Authorization:'Bearer '+c.fk,'Content-Type':'application/json',model:c.fm||'s2.1-pro'},body:JSON.stringify({text:txt,reference_id:c.fv,format:'mp3'})});
     if(!r.ok)throw new Error(r.status);
     const buf=await ac.decodeAudioData(await r.arrayBuffer());
     cur=ac.createBufferSource();cur.buffer=buf;cur.connect(ac.destination);cur.onended=done;cur.start()
@@ -218,18 +219,18 @@ $('mic').onclick=async()=>{
       st.getTracks().forEach(t=>t.stop());$('mic').classList.remove('on');$('mic').textContent='Voice';$('state').textContent='Transcribing';target=0;
       const b=new Blob(chunks,{type:mr.mimeType||'audio/mp4'});
       const ext=/webm/.test(b.type)?'webm':/ogg/.test(b.type)?'ogg':'m4a';
-      const fd=new FormData();fd.append('file',b,'speech.'+ext);fd.append('model','whisper-large-v3-turbo');fd.append('language','en');
+      const fd=new FormData();fd.append('file',b,'speech.'+ext);fd.append('model','whisper-large-v3-turbo');fd.append('language','en');fd.append('prompt','Jarvis, you are my assistant J.A.R.V.I.S.');
       try{
         const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+c.gk},body:fd});
         if(!r.ok)throw new Error(r.status);
-        const t=((await r.json()).text||'').trim();
+        const t=((await r.json()).text||'').trim().replace(/^(j[oó]f|jarvas|jarvus|jervis|jarvi|travis)\b/i,'Jarvis');
         if(t)run(t);else done()
       }catch(e){say('j','I could not transcribe that, sir. Error '+(e.message||'network')+'.');done()}
     };
     mr.start();$('mic').classList.add('on');$('mic').textContent='Stop';$('state').textContent='Listening, tap Stop when done';target=.35
   }catch(e){say('j','I cannot hear you, sir. Please allow microphone access.')}
 };
-const ids={gk:'k1',gm:'k2',fk:'k3',fv:'k4',fm:'k5'};
+const ids={gk:'k1',gm:'k2',fk:'k3',fv:'k4',fm:'k5',fu:'k6'};
 function saveCfg(){const c={};for(const k in ids)c[k]=$(ids[k]).value.trim();try{localStorage.setItem('jv',JSON.stringify(c))}catch(e){}}
 $('gear').onclick=()=>{const c=cfg();for(const k in ids)$(ids[k]).value=c[k]||'';$('dlg').showModal()};
 $('sf').onsubmit=saveCfg;
